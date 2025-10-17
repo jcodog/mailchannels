@@ -192,6 +192,6 @@ jobs:
           registry-url: https://registry.npmjs.org/
 
       - name: Publish package
-        run: npm publish package/${{ needs.build.outputs.tarball }} --access public --provenance
+        run: npm publish ./package/${{ needs.build.outputs.tarball }} --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
