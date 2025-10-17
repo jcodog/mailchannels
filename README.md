@@ -1,6 +1,6 @@
 # @jconet-ltd/mailchannels-client
 
-[[![Builds](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml)](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml/badge.svg?branch=main&event=workflow_run)
+[![Builds](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://jcodog.github.io/mailchannels/badge.json)](https://jcodog.github.io/mailchannels/)
 
 TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailchannels.net/email-api) with runtime validation, DKIM enforcement, and ergonomic helpers. The client targets Node.js 18+ and reuses the built-in Fetch API, so there are no production dependencies.
