@@ -25,21 +25,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Type check
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Build package
-        run: npm run build
+        run: pnpm run build
 
       - name: Pack npm artifact
         id: pack
         run: |
-          TAR_NAME=$(npm pack --pack-destination dist)
+          mkdir -p dist
+          TAR_NAME=$(pnpm pack --pack-destination dist)
           echo "tarball=$TAR_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Upload packaged artifact
@@ -66,7 +71,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Determine package metadata
         id: metadata
@@ -149,8 +158,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
           registry-url: https://registry.npmjs.org/
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Publish package
         run: npm publish package/${{ needs.build.outputs.tarball }} --access public --provenance
