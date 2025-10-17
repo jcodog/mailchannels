@@ -18,6 +18,12 @@ import {
 
 const DEFAULT_BASE_URL = "https://api.mailchannels.net/tx/v1";
 const SEND_PATH = "send";
+const REQUEST_ID_HEADER_CANDIDATES = [
+  "x-request-id",
+  "x-mc-request-id",
+  "mc-request-id",
+  "cf-ray",
+];
 
 /**
  * minimal subset of DKIM properties used for validation when normalising payloads.
@@ -36,6 +42,127 @@ type DkimFields = {
  */
 function hasText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+/**
+ * Normalises Fetch headers into a plain case-insensitive record.
+ */
+function serializeHeaders(headers: Headers): Record<string, string> {
+  const result: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    result[key.toLowerCase()] = value;
+  });
+  return result;
+}
+
+/**
+ * Extracts a request identifier from well-known header names.
+ */
+function extractRequestId(headers: Headers): string | undefined {
+  for (const header of REQUEST_ID_HEADER_CANDIDATES) {
+    const value = headers.get(header);
+    if (hasText(value)) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Parses an HTTP Retry-After header into seconds when possible.
+ */
+function parseRetryAfterSeconds(headers: Headers): number | undefined {
+  const headerValue = headers.get("retry-after");
+  if (!headerValue) {
+    return undefined;
+  }
+
+  const numeric = Number.parseInt(headerValue, 10);
+  if (Number.isFinite(numeric)) {
+    return Math.max(numeric, 0);
+  }
+
+  const parsedDate = Date.parse(headerValue);
+  if (Number.isFinite(parsedDate)) {
+    const deltaMs = parsedDate - Date.now();
+    if (deltaMs > 0) {
+      return Math.ceil(deltaMs / 1000);
+    }
+    return 0;
+  }
+
+  return undefined;
+}
+
+/**
+ * Produces a user-facing error message based on the returned payload.
+ */
+function deriveErrorMessage(
+  status: number,
+  statusText: string | undefined,
+  parsedBody: unknown,
+  rawText: string
+): string {
+  const fallback = statusText
+    ? `MailChannels request failed with ${status} ${statusText}`
+    : `MailChannels request failed with status ${status}`;
+
+  if (parsedBody && typeof parsedBody === "object") {
+    const message = extractMessageFromBody(
+      parsedBody as Record<string, unknown>
+    );
+    if (message) {
+      return message;
+    }
+  }
+
+  if (hasText(rawText)) {
+    return rawText.trim();
+  }
+
+  return fallback;
+}
+
+/**
+ * Extracts a meaningful message from common MailChannels error payload shapes.
+ */
+function extractMessageFromBody(
+  body: Record<string, unknown>
+): string | undefined {
+  const candidateKeys = ["message", "error_description", "detail", "error"];
+  for (const key of candidateKeys) {
+    const value = body[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  const nestedError = body.error;
+  if (nestedError && typeof nestedError === "object") {
+    const nestedMessage = extractMessageFromBody(
+      nestedError as Record<string, unknown>
+    );
+    if (nestedMessage) {
+      return nestedMessage;
+    }
+  }
+
+  const errorsField = body.errors;
+  if (Array.isArray(errorsField)) {
+    for (const entry of errorsField) {
+      if (typeof entry === "string" && entry.trim().length > 0) {
+        return entry.trim();
+      }
+      if (entry && typeof entry === "object") {
+        const nested = extractMessageFromBody(entry as Record<string, unknown>);
+        if (nested) {
+          return nested;
+        }
+      }
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -355,16 +482,25 @@ export class MailChannelsClient {
     }
 
     if (!response.ok) {
-      const message =
-        parsedBody && typeof parsedBody === "object" && "message" in parsedBody
-          ? String((parsedBody as { message: unknown }).message)
-          : `MailChannels request failed with status ${response.status}`;
-
-      throw new MailChannelsError(
-        message,
+      const statusText = hasText(response.statusText)
+        ? response.statusText.trim()
+        : undefined;
+      const message = deriveErrorMessage(
         response.status,
-        parsedBody ?? rawText
+        statusText,
+        parsedBody,
+        rawText
       );
+      const details = parsedBody ?? (rawText.length > 0 ? rawText : undefined);
+
+      throw new MailChannelsError(message, {
+        status: response.status,
+        statusText,
+        requestId: extractRequestId(response.headers),
+        retryAfterSeconds: parseRetryAfterSeconds(response.headers),
+        headers: serializeHeaders(response.headers),
+        details,
+      });
     }
 
     let responseId: string | undefined;

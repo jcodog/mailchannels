@@ -1,6 +1,6 @@
 # @jconet-ltd/mailchannels-client
 
-[![CI](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml)
+[![Builds](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://jcodog.github.io/mailchannels/badge.json)](https://jcodog.github.io/mailchannels/)
 
 TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailchannels.net/email-api) with strong typings, runtime validation, and ergonomic helpers. The client relies on Node.js 18+ `fetch`, so there are no production dependencies.
@@ -22,6 +22,10 @@ yarn add @jconet-ltd/mailchannels-client
 # Bun
 bun add @jconet-ltd/mailchannels-client
 ```
+
+> 💡 Prefer GitHub Packages? Configure `@jconet-ltd:registry=https://npm.pkg.github.com` in `.npmrc` or append `--registry https://npm.pkg.github.com` to your install command.
+
+> 💡 Publishing also mirrors to GitHub Packages. To install from `npm.pkg.github.com`, add `@jconet-ltd:registry=https://npm.pkg.github.com` to your `.npmrc` or run `npm install @jconet-ltd/mailchannels-client --registry https://npm.pkg.github.com`.
 
 ## Quick start
 
@@ -68,7 +72,7 @@ import type { SendEmailRequest } from "@jconet-ltd/mailchannels-client";
 
 # @jconet-ltd/mailchannels-client
 
-[![CI](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml)
+[![Builds](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://jcodog.github.io/mailchannels/badge.json)](https://jcodog.github.io/mailchannels/)
 
 TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailchannels.net/email-api) with runtime validation, DKIM enforcement, and ergonomic helpers. The client targets Node.js 18+ and reuses the built-in Fetch API, so there are no production dependencies.

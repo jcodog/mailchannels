@@ -190,7 +190,12 @@ describe("MailChannelsClient", () => {
       async () =>
         new Response(JSON.stringify({ message: "boom" }), {
           status: 500,
-          headers: { "content-type": "application/json" },
+          statusText: "Internal Server Error",
+          headers: {
+            "content-type": "application/json",
+            "x-request-id": "req-123",
+            "retry-after": "120",
+          },
         })
     );
     const client = createClient({}, fetchSpy);
@@ -198,7 +203,14 @@ describe("MailChannelsClient", () => {
     await expect(client.sendEmail(createPayload())).rejects.toMatchObject({
       status: 500,
       message: "boom",
+      statusText: "Internal Server Error",
+      requestId: "req-123",
+      retryAfterSeconds: 120,
       details: { message: "boom" },
+      headers: expect.objectContaining({
+        "x-request-id": "req-123",
+        "retry-after": "120",
+      }),
     });
   });
 
@@ -216,6 +228,159 @@ describe("MailChannelsClient", () => {
       status: 400,
       details: "something went wrong",
     });
+  });
+
+  it("derives error metadata from nested payloads and retry headers", async () => {
+    const futureDate = new Date(Date.now() + 45_000).toUTCString();
+    const fetchSpy = vi
+      .fn<typeof fetch>(
+        async () =>
+          new Response(
+            JSON.stringify({ errors: [{ detail: "first failure" }] }),
+            {
+              status: 429,
+              statusText: "Too Many Requests",
+              headers: {
+                "content-type": "application/json",
+                "retry-after": futureDate,
+                "cf-ray": "ray-id-123",
+              },
+            }
+          )
+      )
+      .mockName("retry-after-fetch");
+
+    const client = createClient({}, fetchSpy);
+    const error = (await client
+      .sendEmail(createPayload())
+      .catch((err) => err)) as MailChannelsError;
+
+    expect(error).toBeInstanceOf(MailChannelsError);
+    expect(error.message).toBe("first failure");
+    expect(error.requestId).toBe("ray-id-123");
+    expect(error.retryAfterSeconds).toBeGreaterThan(0);
+    expect(error.headers).toMatchObject({
+      "retry-after": futureDate,
+      "cf-ray": "ray-id-123",
+    });
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to status text when no body is returned", async () => {
+    const pastDate = new Date(Date.now() - 60_000).toUTCString();
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(null, {
+          status: 503,
+          statusText: "Service Unavailable",
+          headers: { "retry-after": pastDate },
+        })
+    );
+    const client = createClient({}, fetchSpy);
+
+    const error = (await client
+      .sendEmail(createPayload())
+      .catch((err) => err)) as MailChannelsError;
+
+    expect(error.message).toBe(
+      "MailChannels request failed with 503 Service Unavailable"
+    );
+    expect(error.statusText).toBe("Service Unavailable");
+    expect(error.details).toBeUndefined();
+    expect(error.retryAfterSeconds).toBe(0);
+    expect(error.headers).toMatchObject({ "retry-after": pastDate });
+  });
+
+  it("extracts error message from string arrays", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ errors: ["primary failure"] }), {
+          status: 422,
+          statusText: "Unprocessable Entity",
+          headers: {
+            "content-type": "application/json",
+            "x-mc-request-id": "mc-id-456",
+          },
+        })
+    );
+    const client = createClient({}, fetchSpy);
+
+    const error = (await client
+      .sendEmail(createPayload())
+      .catch((err) => err)) as MailChannelsError;
+
+    expect(error.message).toBe("primary failure");
+    expect(error.requestId).toBe("mc-id-456");
+  });
+
+  it("walks nested error arrays until a message is found", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            errors: [
+              "   ",
+              { extra: true },
+              { error: { error_description: "final message" } },
+            ],
+          }),
+          {
+            status: 400,
+            statusText: "Bad Request",
+            headers: { "content-type": "application/json" },
+          }
+        )
+    );
+    const client = createClient({}, fetchSpy);
+
+    const error = (await client
+      .sendEmail(createPayload())
+      .catch((err) => err)) as MailChannelsError;
+
+    expect(error.message).toBe("final message");
+  });
+
+  it("handles empty errors arrays without messages", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ errors: [] }), {
+          status: 409,
+          statusText: "Conflict",
+          headers: { "content-type": "application/json" },
+        })
+    );
+    const client = createClient({}, fetchSpy);
+
+    const error = (await client
+      .sendEmail(createPayload())
+      .catch((err) => err)) as MailChannelsError;
+
+    expect(error.message).toBe('{"errors":[]}');
+    expect(error.statusText).toBe("Conflict");
+  });
+
+  it("falls back when the error payload is unrecognised", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ unexpected: true }), {
+          status: 418,
+          statusText: "I'm a teapot",
+          headers: {
+            "content-type": "application/json",
+            "retry-after": "not-a-date",
+          },
+        })
+    );
+    const client = createClient({}, fetchSpy);
+
+    const error = (await client
+      .sendEmail(createPayload())
+      .catch((err) => err)) as MailChannelsError;
+
+    expect(error.message).toBe('{"unexpected":true}');
+    expect(error.retryAfterSeconds).toBeUndefined();
+    expect(error.headers).toMatchObject({ "retry-after": "not-a-date" });
+    expect(error.details).toEqual({ unexpected: true });
   });
 
   it("returns raw response text when JSON parsing fails", async () => {
@@ -395,5 +560,37 @@ describe("MailChannelsError", () => {
     const error = new MailChannelsError("message", 400, { help: true });
     expect(error.status).toBe(400);
     expect(error.details).toEqual({ help: true });
+    expect(error.headers).toEqual({});
+  });
+
+  it("supports enriched constructor options", () => {
+    const error = new MailChannelsError("boom", {
+      status: 429,
+      statusText: "Too Many Requests",
+      requestId: "req-789",
+      retryAfterSeconds: 30,
+      headers: { "retry-after": "30" },
+      details: { message: "slow down" },
+    });
+
+    expect(error).toMatchObject({
+      status: 429,
+      statusText: "Too Many Requests",
+      requestId: "req-789",
+      retryAfterSeconds: 30,
+      headers: { "retry-after": "30" },
+      details: { message: "slow down" },
+    });
+    expect(Object.isFrozen(error.headers)).toBe(true);
+  });
+
+  it("preserves a provided cause", () => {
+    const rootCause = new Error("underlying");
+    const error = new MailChannelsError("wrapper", {
+      status: 502,
+      cause: rootCause,
+    });
+
+    expect((error as Error & { cause?: unknown }).cause).toBe(rootCause);
   });
 });
