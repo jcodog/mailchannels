@@ -3,106 +3,25 @@
 [![Builds](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://jcodog.github.io/mailchannels/badge.json)](https://jcodog.github.io/mailchannels/)
 
-TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailchannels.net/email-api) with strong typings, runtime validation, and ergonomic helpers. The client relies on Node.js 18+ `fetch`, so there are no production dependencies.
+TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailchannels.net/email-api) with runtime validation, DKIM enforcement, and ergonomic helpers. The client targets Node.js 18+ and reuses the built-in Fetch API, so there are no production dependencies.
 
 > ℹ️ Before sending email you must provision an SMTP password, generate an API key with the `api` scope, and configure Domain Lockdown records as documented by MailChannels.<sup>[1](#footnote-auth)</sup>
 
-## Installation
+## Table of contents
 
-```bash
-# pnpm
-pnpm add @jconet-ltd/mailchannels-client
-
-# npm
-npm install @jconet-ltd/mailchannels-client
-
-# Yarn
-yarn add @jconet-ltd/mailchannels-client
-
-# Bun
-bun add @jconet-ltd/mailchannels-client
-```
-
-> 💡 Prefer GitHub Packages? Configure `@jconet-ltd:registry=https://npm.pkg.github.com` in `.npmrc` or append `--registry https://npm.pkg.github.com` to your install command.
-
-> 💡 Publishing also mirrors to GitHub Packages. To install from `npm.pkg.github.com`, add `@jconet-ltd:registry=https://npm.pkg.github.com` to your `.npmrc` or run `npm install @jconet-ltd/mailchannels-client --registry https://npm.pkg.github.com`.
-
-## Quick start
-
-```ts
-import { MailChannelsClient } from "@jconet-ltd/mailchannels-client";
-
-const client = new MailChannelsClient({
-  apiKey: process.env.MAILCHANNELS_API_KEY ?? "",
-});
-
-await client.sendEmail({
-  personalizations: [
-    {
-      to: [{ email: "recipient@example.net", name: "Sakura Tanaka" }],
-    },
-  ],
-  from: { email: "sender@example.com", name: "Priya Patel" },
-  subject: "Testing Email API",
-  content: [
-    { type: "text/plain", value: "Hi Sakura. This is just a test from Priya." },
-    {
-      type: "text/html",
-      value: "<p>Hi Sakura.<br>This is just a test from Priya.</p>",
-    },
-  ],
-});
-```
-
-Under the hood the client issues a `POST` request to `https://api.mailchannels.net/tx/v1/send` with your API key in the `X-Api-Key` header, exactly as described in the MailChannels sending guide.<sup>[2](#footnote-send)</sup>
-
-## Features
-
-- Strong TypeScript definitions mirroring the MailChannels `/send` payload.<sup>[3](#footnote-structure)</sup>
-- Runtime validation of required fields before any network call.
-- Optional dry-run support (`?dry-run=true`) for server-side validation without delivery.<sup>[4](#footnote-dryrun)</sup>
-- Rich attachment helpers with guardrails around type and base64 requirements.<sup>[5](#footnote-attachments)</sup>
-- Uses the built-in Fetch API from Node.js 18+, but allows custom implementations for testing.
-
-## Sending with options
-
-````ts
-import { MailChannelsClient } from "@jconet-ltd/mailchannels-client";
-import type { SendEmailRequest } from "@jconet-ltd/mailchannels-client";
-
-# @jconet-ltd/mailchannels-client
-
-[![Builds](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/release-and-publish.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https://jcodog.github.io/mailchannels/badge.json)](https://jcodog.github.io/mailchannels/)
-
-TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailchannels.net/email-api) with runtime validation, DKIM enforcement, and ergonomic helpers. The client targets Node.js 18+ and reuses the built-in Fetch API, so there are no production dependencies.
-
-## MailChannels setup guide
-
-1. **Create an account.** Sign up for MailChannels, verify your email address, and add valid billing details as prompted.<sup>[1](#footnote-account)</sup>
-2. **Complete the authentication prerequisites.** From the console create an SMTP password, generate an API key with the `api` scope, and publish Domain Lockdown (`_mailchannels`) TXT records for every sending domain.<sup>[2](#footnote-auth)</sup>
-3. **Provision DKIM.** MailChannels requires DKIM signatures for modern deliverability. You can:
-   - Manage your own keys by generating a private key, deriving the public key, and publishing it at `selector._domainkey.yourdomain`. Sample OpenSSL commands:<sup>[3](#footnote-dkim)</sup>
-
-     ```bash
-     openssl genrsa 2048 | tee priv_key.pem \
-       | openssl rsa -outform der \
-       | openssl base64 -A > priv_key.txt
-
-     echo -n "v=DKIM1;p=" > pub_key_record.txt
-     openssl rsa -in priv_key.pem -pubout -outform der \
-       | openssl base64 -A >> pub_key_record.txt
-     ```
-
-     Publish the contents of `pub_key_record.txt` as a TXT record at `<selector>._domainkey.<yourdomain>`.
-   - Or use the MailChannels DKIM APIs (`POST /tx/v1/domains/{domain}/dkim-keys`, etc.) to generate and activate key pairs directly from code, then publish the returned DNS record.<sup>[3](#footnote-dkim)</sup>
-
-4. **Record your defaults.** Capture the following details for the domain you will sign with:
-   - `dkim_domain` – typically the same domain as your `From` address for DMARC alignment.
-   - `dkim_selector` – the label you used in DNS (for example `mcdkim`).
-   - `dkim_private_key` – the Base64-encoded private key (contents of `priv_key.txt` if you used the OpenSSL recipe above).
-
-Once the DNS changes propagate you are ready to send signed traffic through the `/send` endpoint.<sup>[4](#footnote-send)</sup>
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Features](#features)
+- [MailChannels setup guide](#mailchannels-setup-guide)
+- [Per-recipient overrides](#per-recipient-overrides)
+- [Attachments](#attachments)
+- [Error handling](#error-handling)
+- [Testing](#testing)
+- [API surface](#api-surface)
+  - [`new MailChannelsClient(options)`](#new-mailchannelsclientoptions)
+  - [`sendEmail(payload, options?)`](#sendemailpayload-options)
+  - [Errors](#errors)
+- [Footnotes](#footnotes)
 
 ## Installation
 
@@ -118,7 +37,7 @@ yarn add @jconet-ltd/mailchannels-client
 
 # Bun
 bun add @jconet-ltd/mailchannels-client
-````
+```
 
 ## Quick start
 
@@ -154,14 +73,46 @@ await client.sendEmail({
 
 The client injects the DKIM defaults into both the request body and every personalization, ensuring compliance with MailChannels' DKIM requirements even when you do not set them manually.
 
+Under the hood the client issues a `POST` request to `https://api.mailchannels.net/tx/v1/send` with your API key in the `X-Api-Key` header, exactly as described in the MailChannels sending guide.<sup>[2](#footnote-send)</sup>
+
 ## Features
 
 - Required DKIM configuration enforced at construction time to keep every request compliant.<sup>[3](#footnote-dkim)</sup>
 - Strong TypeScript definitions that mirror the MailChannels `/send` payload.<sup>[5](#footnote-structure)</sup>
 - Runtime validation of key fields (personalizations, content, DKIM) before the network hop.
 - Optional dry-run support (`?dry-run=true`) so you can validate payloads without delivering mail.<sup>[6](#footnote-dryrun)</sup>
+- Detailed error metadata surfaced via `MailChannelsError`, including request identifiers, retry hints, headers, and the original payload.
 - Attachment helper validation around MIME type, filename, and Base64 encoding.<sup>[7](#footnote-attachments)</sup>
 - Built-in Fetch integration with an escape hatch for custom implementations (tests, polyfills).
+
+## MailChannels setup guide
+
+1. **Create an account.** Sign up for MailChannels, verify your email address, and add valid billing details as prompted.<sup>[1](#footnote-account)</sup>
+2. **Complete the authentication prerequisites.** From the console create an SMTP password, generate an API key with the `api` scope, and publish Domain Lockdown (`_mailchannels`) TXT records for every sending domain.<sup>[2](#footnote-auth)</sup>
+3. **Provision DKIM.** MailChannels requires DKIM signatures for modern deliverability. You can:
+
+   - Generate a private key, derive the public key, and publish it at `selector._domainkey.yourdomain`. Sample OpenSSL commands:<sup>[3](#footnote-dkim)</sup>
+
+     ```bash
+     openssl genrsa 2048 | tee priv_key.pem \
+       | openssl rsa -outform der \
+       | openssl base64 -A > priv_key.txt
+
+     echo -n "v=DKIM1;p=" > pub_key_record.txt
+     openssl rsa -in priv_key.pem -pubout -outform der \
+       | openssl base64 -A >> pub_key_record.txt
+     ```
+
+     Publish the contents of `pub_key_record.txt` as a TXT record at `<selector>._domainkey.<yourdomain>`.
+
+   - Or call the MailChannels DKIM APIs (`POST /tx/v1/domains/{domain}/dkim-keys`, etc.) to generate and activate key pairs directly, then publish the returned DNS record.<sup>[3](#footnote-dkim)</sup>
+
+4. **Record your defaults.** Capture the following details for the domain you will sign with:
+   - `dkim_domain` – typically the same domain as your `From` address for DMARC alignment.
+   - `dkim_selector` – the label you used in DNS (for example `mcdkim`).
+   - `dkim_private_key` – the Base64-encoded private key (contents of `priv_key.txt` if you used the OpenSSL recipe above).
+
+Once the DNS changes propagate you are ready to send signed traffic through the `/send` endpoint.<sup>[4](#footnote-send)</sup>
 
 ## Per-recipient overrides
 
@@ -249,6 +200,35 @@ await client.sendEmail({
 });
 ```
 
+## Error handling
+
+API failures throw a `MailChannelsError` with rich diagnostics so you can log or retry intelligently. In addition to the message and status code, the error exposes the HTTP status text, response headers, any structured body, the upstream request identifier, and a parsed `retryAfterSeconds` hint when the service returns `Retry-After`.
+
+```ts
+import { MailChannelsError } from "@jconet-ltd/mailchannels-client";
+
+try {
+  await client.sendEmail(payload);
+} catch (error) {
+  if (error instanceof MailChannelsError) {
+    console.error(
+      "MailChannels request failed",
+      error.status,
+      error.statusText,
+      error.requestId
+    );
+
+    if (error.retryAfterSeconds) {
+      console.info("Safe to retry in", error.retryAfterSeconds, "seconds");
+    }
+
+    console.debug("Response headers", error.headers);
+    console.debug("Original payload", error.details);
+  }
+  throw error;
+}
+```
+
 ## Testing
 
 ```bash
@@ -279,7 +259,7 @@ npm run build
 
 ### Errors
 
-Non-success responses raise `MailChannelsError`, exposing the HTTP status and any parsed response body to streamline troubleshooting.
+Non-success responses raise `MailChannelsError`, exposing the HTTP status, status text, request identifier, retry hints, headers, and the parsed or raw response body. Advanced callers can construct the error manually with `MailChannelsErrorOptions` when wrapping lower-level utilities.
 
 ## Footnotes
 

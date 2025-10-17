@@ -26,7 +26,7 @@ const REQUEST_ID_HEADER_CANDIDATES = [
 ];
 
 /**
- * minimal subset of DKIM properties used for validation when normalising payloads.
+ * Minimal subset of DKIM properties used for validation when normalising payloads.
  */
 type DkimFields = {
   readonly dkim_domain?: string;
@@ -45,7 +45,7 @@ function hasText(value: unknown): value is string {
 }
 
 /**
- * Normalises Fetch headers into a plain case-insensitive record.
+ * Converts response headers into a lower-cased record for stable lookups and serialization.
  */
 function serializeHeaders(headers: Headers): Record<string, string> {
   const result: Record<string, string> = {};
@@ -56,7 +56,7 @@ function serializeHeaders(headers: Headers): Record<string, string> {
 }
 
 /**
- * Extracts a request identifier from well-known header names.
+ * Extracts a request identifier from well-known header names used by MailChannels and proxies.
  */
 function extractRequestId(headers: Headers): string | undefined {
   for (const header of REQUEST_ID_HEADER_CANDIDATES) {
@@ -69,7 +69,7 @@ function extractRequestId(headers: Headers): string | undefined {
 }
 
 /**
- * Parses an HTTP Retry-After header into seconds when possible.
+ * Parses an HTTP `Retry-After` header into seconds when possible.
  */
 function parseRetryAfterSeconds(headers: Headers): number | undefined {
   const headerValue = headers.get("retry-after");
@@ -95,7 +95,7 @@ function parseRetryAfterSeconds(headers: Headers): number | undefined {
 }
 
 /**
- * Produces a user-facing error message based on the returned payload.
+ * Derives a user-facing error message using JSON payload hints or textual fallbacks.
  */
 function deriveErrorMessage(
   status: number,
@@ -439,6 +439,8 @@ export class MailChannelsClient {
    * @returns Parsed response metadata, including the HTTP status and any message identifier.
    * @throws {TypeError} When validation fails before issuing the HTTP request.
    * @throws {MailChannelsError} When the MailChannels API responds with a non-success status.
+   *   The error contains HTTP diagnostics such as the status text, response headers, request
+   *   identifier, retry hints, and either the parsed JSON body or raw response text.
    */
   public async sendEmail(
     payload: SendEmailRequest,

@@ -1,5 +1,9 @@
 /**
- * Additional metadata describing a MailChannels API failure.
+ * Captures contextual metadata about a failed MailChannels API call.
+ *
+ * Instances are typically created by {@link MailChannelsClient | MailChannelsClient}
+ * when the remote endpoint responds with a non-2xx status. You can also construct
+ * {@link MailChannelsError} manually with these options when wrapping lower-level code.
  *
  * @public
  */
@@ -11,18 +15,22 @@ export interface MailChannelsErrorOptions {
   /**
    * Request correlation identifier returned by MailChannels when present.
    * Many responses include `x-request-id`, which is surfaced here in a normalized form.
+   * Use this value when contacting MailChannels support or correlating logs.
    */
   readonly requestId?: string;
   /**
    * Retry window expressed in seconds when a `Retry-After` header exists and can be parsed.
+   * Undefined when the header is absent or cannot be coerced into a useful value.
    */
   readonly retryAfterSeconds?: number;
   /**
    * Snapshot of all response headers keyed by lower-case header names.
+   * Helpful for debugging anti-abuse responses that rely on rate-limit headers.
    */
   readonly headers?: Record<string, string>;
   /**
-   * Structured payload or raw body returned by the API.
+   * Structured payload or raw body returned by the API. May be an object (for JSON bodies)
+   * or a string containing unparsed response text.
    */
   readonly details?: unknown;
   /** Optional upstream cause preserved when available. */
@@ -40,11 +48,13 @@ export interface MailChannelsErrorOptions {
 export class MailChannelsError extends Error {
   /** HTTP status returned by the remote endpoint. */
   public readonly status: number;
-
-  /** Optional HTTP status text returned by the service. */
+  /**
+   * Parsed retry window in seconds derived from the `Retry-After` header.
+   * Consumers can use this to determine backoff intervals.
+   */
   public readonly statusText?: string;
 
-  /** Correlation identifier extracted from response headers when available. */
+  /** Snapshot of response headers keyed by lower-case header names. */
   public readonly requestId?: string;
 
   /** Parsed retry window in seconds derived from the `Retry-After` header. */

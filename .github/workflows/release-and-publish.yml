@@ -178,7 +178,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-      packages: write
     steps:
       - name: Download package artifact
         uses: actions/download-artifact@v4
@@ -197,15 +196,3 @@ jobs:
         run: npm publish ./package/${{ needs.build.outputs.tarball }} --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Configure Node.js for GitHub Packages
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          scope: "@jconet-ltd"
-          registry-url: https://npm.pkg.github.com/
-
-      - name: Publish package to GitHub Packages
-        run: npm publish ./package/${{ needs.build.outputs.tarball }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
