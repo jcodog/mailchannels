@@ -1,0 +1,158 @@
+name: Release & Publish
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build package
+        run: npm run build
+
+      - name: Pack npm artifact
+        id: pack
+        run: |
+          TAR_NAME=$(npm pack --pack-destination dist)
+          echo "tarball=$TAR_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload packaged artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-tarball
+          path: dist/${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      created: ${{ steps.decision.outputs.created }}
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Determine package metadata
+        id: metadata
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          NAME=$(node -p "require('./package.json').name")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Check for existing release
+        id: release_check
+        uses: actions/github-script@v7
+        env:
+          TAG_NAME: v${{ steps.metadata.outputs.version }}
+        with:
+          script: |
+            const tag = process.env.TAG_NAME;
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+              core.setOutput('exists', 'true');
+            } catch (error) {
+              if (error.status === 404) {
+                core.setOutput('exists', 'false');
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Decide whether to release
+        id: decision
+        run: |
+          if [ "${{ steps.release_check.outputs.exists }}" = "true" ]; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "created=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download package artifact
+        if: steps.decision.outputs.created == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: package-tarball
+          path: release-artifacts
+
+      - name: Create GitHub release
+        if: steps.decision.outputs.created == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.metadata.outputs.version }}
+          name: ${{ steps.metadata.outputs.name }} ${{ steps.metadata.outputs.version }}
+          body: |
+            Automated release for ${{ steps.metadata.outputs.name }} v${{ steps.metadata.outputs.version }}.
+          files: release-artifacts/${{ needs.build.outputs.tarball }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-npm:
+    name: Publish to npm
+    needs:
+      - build
+      - release
+    if: needs.release.outputs.created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: package-tarball
+          path: package
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org/
+
+      - name: Publish package
+        run: npm publish package/${{ needs.build.outputs.tarball }} --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
