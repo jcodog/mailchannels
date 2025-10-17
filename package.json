@@ -1,0 +1,48 @@
+{
+  "name": "mailchannels",
+  "version": "1.0.0",
+  "description": "Lightweight TypeScript wrapper for the MailChannels Email API.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "prepare": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "mailchannels",
+    "email",
+    "transactional",
+    "api",
+    "typescript"
+  ],
+  "author": "JCoDog",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jcodog/mailchannels"
+  },
+  "bugs": {
+    "url": "https://github.com/jcodog/mailchannels/issues"
+  },
+  "homepage": "https://github.com/jcodog/mailchannels",
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.5"
+  }
+}
