@@ -1,5 +1,5 @@
 {
-  "name": "mailchannels",
+  "name": "@jconet-ltd/mailchannels-client",
   "version": "1.0.0",
   "description": "Lightweight TypeScript wrapper for the MailChannels Email API.",
   "type": "module",

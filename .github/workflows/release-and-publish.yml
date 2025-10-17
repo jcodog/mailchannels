@@ -189,6 +189,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          scope: "@jconet-ltd"
           registry-url: https://registry.npmjs.org/
 
       - name: Publish package

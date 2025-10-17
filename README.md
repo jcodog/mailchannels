@@ -1,4 +1,4 @@
-# mailchannels
+# @jconet-ltd/mailchannels-client
 
 [![CI](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://jcodog.github.io/mailchannels/badge.json)](https://jcodog.github.io/mailchannels/)
@@ -11,22 +11,22 @@ TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailch
 
 ```bash
 # pnpm
-pnpm add mailchannels
+pnpm add @jconet-ltd/mailchannels-client
 
 # npm
-npm install mailchannels
+npm install @jconet-ltd/mailchannels-client
 
 # Yarn
-yarn add mailchannels
+yarn add @jconet-ltd/mailchannels-client
 
 # Bun
-bun add mailchannels
+bun add @jconet-ltd/mailchannels-client
 ```
 
 ## Quick start
 
 ```ts
-import { MailChannelsClient } from "mailchannels";
+import { MailChannelsClient } from "@jconet-ltd/mailchannels-client";
 
 const client = new MailChannelsClient({
   apiKey: process.env.MAILCHANNELS_API_KEY ?? "",
@@ -63,10 +63,10 @@ Under the hood the client issues a `POST` request to `https://api.mailchannels.n
 ## Sending with options
 
 ````ts
-import { MailChannelsClient } from "mailchannels";
-import type { SendEmailRequest } from "mailchannels";
+import { MailChannelsClient } from "@jconet-ltd/mailchannels-client";
+import type { SendEmailRequest } from "@jconet-ltd/mailchannels-client";
 
-# mailchannels
+# @jconet-ltd/mailchannels-client
 
 [![CI](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://jcodog.github.io/mailchannels/badge.json)](https://jcodog.github.io/mailchannels/)
@@ -104,22 +104,22 @@ Once the DNS changes propagate you are ready to send signed traffic through the 
 
 ```bash
 # pnpm
-pnpm add mailchannels
+pnpm add @jconet-ltd/mailchannels-client
 
 # npm
-npm install mailchannels
+npm install @jconet-ltd/mailchannels-client
 
 # Yarn
-yarn add mailchannels
+yarn add @jconet-ltd/mailchannels-client
 
 # Bun
-bun add mailchannels
+bun add @jconet-ltd/mailchannels-client
 ````
 
 ## Quick start
 
 ```ts
-import { MailChannelsClient } from "mailchannels";
+import { MailChannelsClient } from "@jconet-ltd/mailchannels-client";
 
 const client = new MailChannelsClient({
   apiKey: process.env.MAILCHANNELS_API_KEY ?? "",
@@ -164,8 +164,8 @@ The client injects the DKIM defaults into both the request body and every person
 You can still customise DKIM (and other headers) per recipient. Values defined inside a personalization override the client defaults for that specific message.
 
 ```ts
-import { MailChannelsClient } from "mailchannels";
-import type { SendEmailRequest } from "mailchannels";
+import { MailChannelsClient } from "@jconet-ltd/mailchannels-client";
+import type { SendEmailRequest } from "@jconet-ltd/mailchannels-client";
 
 const client = new MailChannelsClient({
   apiKey: "YOUR-API-KEY",
@@ -214,7 +214,7 @@ await client.sendEmail(message, { dryRun: true });
 Attachments must be Base64 encoded and accompanied by a MIME type plus filename. The client checks these fields before sending.
 
 ```ts
-import { MailChannelsClient } from "mailchannels";
+import { MailChannelsClient } from "@jconet-ltd/mailchannels-client";
 import { promises as fs } from "node:fs";
 
 const client = new MailChannelsClient({
