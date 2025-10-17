@@ -18,6 +18,9 @@
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
     "prepare": "npm run build",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "coverage:badge": "node ./scripts/create-coverage-badge.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [
@@ -42,7 +45,9 @@
   "homepage": "https://github.com/jcodog/mailchannels",
   "devDependencies": {
     "@types/node": "^20.11.30",
+    "@vitest/coverage-v8": "^1.6.0",
     "rimraf": "^5.0.5",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
   }
 }

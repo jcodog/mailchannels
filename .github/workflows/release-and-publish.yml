@@ -1,17 +1,22 @@
 name: Release & Publish
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
 
 concurrency:
-  group: release-publish-${{ github.ref }}
+  group: release-publish-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
   build:
     name: Build & Package
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -20,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -56,20 +63,30 @@ jobs:
       - name: Pack npm artifact
         id: pack
         run: |
-          mkdir -p dist
-          TAR_NAME=$(pnpm pack --pack-destination dist)
-          echo "tarball=$TAR_NAME" >> "$GITHUB_OUTPUT"
+          rm -rf package-artifacts
+          mkdir -p package-artifacts
+          pnpm pack --pack-destination package-artifacts --silent
+          TAR_PATH=$(find package-artifacts -maxdepth 1 -name '*.tgz' -print -quit)
+          TAR_NAME=$(basename "$TAR_PATH")
+          {
+            echo "tarball=$TAR_NAME"
+            echo "tarball_path=$TAR_PATH"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Upload packaged artifact
         uses: actions/upload-artifact@v4
         with:
           name: package-tarball
-          path: dist/${{ steps.pack.outputs.tarball }}
+          path: package-artifacts/${{ steps.pack.outputs.tarball }}
           if-no-files-found: error
 
   release:
     name: Create GitHub Release
     needs: build
+    if: >-
+      ${{ needs.build.result == 'success' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -79,6 +96,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -150,7 +169,11 @@ jobs:
     needs:
       - build
       - release
-    if: needs.release.outputs.created == 'true'
+    if: >-
+      ${{ needs.release.result == 'success' &&
+          needs.release.outputs.created == 'true' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

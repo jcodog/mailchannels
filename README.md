@@ -1,4 +1,7 @@
-# mailchannels-client
+# mailchannels
+
+[![CI](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jcodog/mailchannels/gh-pages/badge.json)](https://jcodog.github.io/mailchannels/)
 
 TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailchannels.net/email-api) with strong typings, runtime validation, and ergonomic helpers. The client relies on Node.js 18+ `fetch`, so there are no production dependencies.
 
@@ -7,13 +10,23 @@ TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailch
 ## Installation
 
 ```bash
-npm install mailchannels-client
+# pnpm
+pnpm add mailchannels
+
+# npm
+npm install mailchannels
+
+# Yarn
+yarn add mailchannels
+
+# Bun
+bun add mailchannels
 ```
 
 ## Quick start
 
 ```ts
-import { MailChannelsClient } from "mailchannels-client";
+import { MailChannelsClient } from "mailchannels";
 
 const client = new MailChannelsClient({
   apiKey: process.env.MAILCHANNELS_API_KEY ?? "",
@@ -50,10 +63,13 @@ Under the hood the client issues a `POST` request to `https://api.mailchannels.n
 ## Sending with options
 
 ````ts
-import { MailChannelsClient } from "mailchannels-client";
-import type { SendEmailRequest } from "mailchannels-client";
+import { MailChannelsClient } from "mailchannels";
+import type { SendEmailRequest } from "mailchannels";
 
-# mailchannels-client
+# mailchannels
+
+[![CI](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml/badge.svg)](https://github.com/jcodog/mailchannels/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jcodog/mailchannels/gh-pages/badge.json)](https://jcodog.github.io/mailchannels/)
 
 TypeScript-first wrapper around the [MailChannels Email API](https://docs.mailchannels.net/email-api) with runtime validation, DKIM enforcement, and ergonomic helpers. The client targets Node.js 18+ and reuses the built-in Fetch API, so there are no production dependencies.
 
@@ -87,13 +103,23 @@ Once the DNS changes propagate you are ready to send signed traffic through the 
 ## Installation
 
 ```bash
-npm install mailchannels-client
+# pnpm
+pnpm add mailchannels
+
+# npm
+npm install mailchannels
+
+# Yarn
+yarn add mailchannels
+
+# Bun
+bun add mailchannels
 ````
 
 ## Quick start
 
 ```ts
-import { MailChannelsClient } from "mailchannels-client";
+import { MailChannelsClient } from "mailchannels";
 
 const client = new MailChannelsClient({
   apiKey: process.env.MAILCHANNELS_API_KEY ?? "",
@@ -138,8 +164,8 @@ The client injects the DKIM defaults into both the request body and every person
 You can still customise DKIM (and other headers) per recipient. Values defined inside a personalization override the client defaults for that specific message.
 
 ```ts
-import { MailChannelsClient } from "mailchannels-client";
-import type { SendEmailRequest } from "mailchannels-client";
+import { MailChannelsClient } from "mailchannels";
+import type { SendEmailRequest } from "mailchannels";
 
 const client = new MailChannelsClient({
   apiKey: "YOUR-API-KEY",
@@ -188,7 +214,7 @@ await client.sendEmail(message, { dryRun: true });
 Attachments must be Base64 encoded and accompanied by a MIME type plus filename. The client checks these fields before sending.
 
 ```ts
-import { MailChannelsClient } from "mailchannels-client";
+import { MailChannelsClient } from "mailchannels";
 import { promises as fs } from "node:fs";
 
 const client = new MailChannelsClient({
